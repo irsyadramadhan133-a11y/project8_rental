@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaptopRent - Management System</title>
+    <style>
+        :root { --p: #4f46e5; --s: #0891b2; --danger: #ef4444; }
+        body { font-family: sans-serif; background: #f1f5f9; margin: 0; padding: 0; }
+        .hidden { display: none !important; }
+        
+        /* Login Style */
+        #loginPage { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--p), var(--s)); }
+        .box { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); text-align: center; width: 300px; }
+        .btn-log { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; }
+        
+        /* Nav & Container */
+        nav { background: white; padding: 15px 5%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 20px; }
+        
+        /* Dashboard Admin */
+        .card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        
+        /* Dashboard User */
+        .grid-user { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .item { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .bayar-box { display: flex; gap: 5px; margin-top: 15px; }
+        
+        .btn { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .btn-p { background: var(--p); color: white; }
+        .btn-s { background: var(--s); color: white; }
+        .btn-d { background: var(--danger); color: white; }
+        .btn-out { background: #fee2e2; color: #dc2626; }
+    </style>
+</head>
+<body>
+
+<div id="loginPage">
+    <div class="box">
+        <h2>LaptopRent</h2>
+        <button class="btn-log" style="background:var(--p)" onclick="masuk('admin')">Login Admin</button>
+        <button class="btn-log" style="background:var(--s)" onclick="masuk('user')">Login User</button>
+    </div>
+</div>
+
+<nav id="navbar" class="hidden">
+    <b id="txtRole">DASHBOARD</b>
+    <button class="btn btn-out" onclick="keluar()">Logout</button>
+</nav>
+
+<div id="panelAdmin" class="container hidden">
+    <div class="card">
+        <h3 id="judulForm">Tambah Laptop</h3>
+        <input type="text" id="inpNama" placeholder="Merk & Seri Laptop">
+        <input type="number" id="inpHarga" placeholder="Harga Sewa / Hari">
+        <select id="inpStatus">
+            <option value="Tersedia">Tersedia</option>
+            <option value="Disewa">Sedang Disewa</option>
+        </select>
+        <input type="hidden" id="saveIdx">
+        <button class="btn btn-p" style="width:100%" onclick="aksiSimpan()">Simpan Data</button>
+    </div>
+
+    <div class="card">
+        <h3>Monitoring Unit</h3>
+        <table>
+            <thead>
+                <tr style="background:#f8fafc">
+                    <th>Laptop</th>
+                    <th>Harga</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="bodyTabel"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="panelUser" class="container hidden">
+    <h2>Pilih Laptop Untuk Disewa</h2>
+    <div id="gridUser" class="grid-user"></div>
+</div>
+
+<script>
+    // Database Local
+    let db = [
+        { nama: "Asus Zenbook", harga: 350000, status: "Tersedia" },
+        { nama: "Macbook Air", harga: 400000, status: "Disewa" },
+        { nama: "Lenovo Legion", harga: 500000, status: "Tersedia" }
+    ];
+
+    function masuk(role) {
+        document.getElementById('loginPage').classList.add('hidden');
+        document.getElementById('navbar').classList.remove('hidden');
+        
+        if(role === 'admin') {
+            document.getElementById('panelAdmin').classList.remove('hidden');
+            document.getElementById('panelUser').classList.add('hidden');
+            document.getElementById('txtRole').innerText = "🛠️ ADMIN MODE";
+        } else {
+            document.getElementById('panelUser').classList.remove('hidden');
+            document.getElementById('panelAdmin').classList.add('hidden');
+            document.getElementById('txtRole').innerText = "👤 USER MODE";
+        }
+        refresh();
+    }
+
+    function keluar() {
+        if(confirm("Keluar sistem?")) location.reload();
+    }
+
+    function refresh() {
+        const tabel = document.getElementById('bodyTabel');
+        const grid = document.getElementById('gridUser');
+        tabel.innerHTML = '';
+        grid.innerHTML = '';
+
+        db.forEach((item, index) => {
+            // Isi Tabel Admin (Tambah Tombol Hapus)
+            tabel.innerHTML += `
+                <tr>
+                    <td>${item.nama}</td>
+                    <td>Rp${item.harga.toLocaleString()}</td>
+                    <td><b style="color:${item.status === 'Tersedia' ? 'green' : 'orange'}">${item.status}</b></td>
+                    <td>
+                        <button class="btn btn-s" onclick="panggilEdit(${index})">Edit</button>
+                        <button class="btn btn-d" onclick="hapusData(${index})">Hapus</button>
+                    </td>
+                </tr>`;
+
+            // Isi Grid User (Hanya yang tersedia)
+            if(item.status === 'Tersedia') {
+                grid.innerHTML += `
+                    <div class="item">
+                        <h3>${item.nama}</h3>
+                        <p>Harga: <b>Rp${item.harga.toLocaleString()}</b></p>
+                        <div class="bayar-box">
+                            <select id="metode-${index}" style="margin:0">
+                                <option>Transfer Bank</option>
+                                <option>Dana/OVO</option>
+                            </select>
+                            <button class="btn btn-s" onclick="bayar(${index})">Sewa</button>
+                        </div>
+                    </div>`;
+            }
+        });
+    }
+
+    function aksiSimpan() {
+        const n = document.getElementById('inpNama').value;
+        const h = document.getElementById('inpHarga').value;
+        const s = document.getElementById('inpStatus').value;
+        const idx = document.getElementById('saveIdx').value;
+
+        if(!n || !h) return alert("Mohon isi semua data!");
+
+        if(idx === "") {
+            db.push({ nama: n, harga: parseInt(h), status: s });
+        } else {
+            db[idx] = { nama: n, harga: parseInt(h), status: s };
+            document.getElementById('saveIdx').value = "";
+            document.getElementById('judulForm').innerText = "Tambah Laptop";
+        }
+        
+        document.getElementById('inpNama').value = "";
+        document.getElementById('inpHarga').value = "";
+        refresh();
+    }
+
+    function panggilEdit(i) {
+        document.getElementById('inpNama').value = db[i].nama;
+        document.getElementById('inpHarga').value = db[i].harga;
+        document.getElementById('inpStatus').value = db[i].status;
+        document.getElementById('saveIdx').value = i;
+        document.getElementById('judulForm').innerText = "Edit: " + db[i].nama;
+        window.scrollTo(0,0);
+    }
+
+    // FITUR BARU: Hapus Data
+    function hapusData(i) {
+        if(confirm("Apakah Anda yakin ingin menghapus unit " + db[i].nama + "?")) {
+            db.splice(i, 1); // Menghapus 1 data dari array berdasarkan index
+            refresh();
+        }
+    }
+
+    function bayar(i) {
+        const m = document.getElementById('metode-'+i).value;
+        alert("Pemesanan " + db[i].nama + " Berhasil!\nMetode: " + m + "\nSilahkan hubungi admin.");
+    }
+</script>
+
+</body>
+</html>
